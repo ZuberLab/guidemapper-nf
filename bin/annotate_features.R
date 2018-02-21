@@ -39,8 +39,8 @@ name_lib <- args[8]
 # feature_type <- "ENSEMBL"
 # name_lib <- "test1"
 
-stopifnot(legacy_feature_type %in% c("ENTREZ", "SYMBOL", "ENSEMBL"))
-stopifnot(feature_type %in% c("ENTREZ", "SYMBOL", "ENSEMBL"))
+stopifnot(legacy_feature_type %in% c("ENTREZID", "SYMBOL", "ENSEMBL"))
+stopifnot(feature_type %in% c("ENTREZID", "SYMBOL", "ENSEMBL"))
 stopifnot(org_db %in% c("org.Hs.eg.db", "org.Mm.eg.db"))
 
 ### import
@@ -90,7 +90,7 @@ temp <- seq %>%
   left_join(features_cds) %>%
   left_join(features_txs)
 
-if (!annotate_agnostic) {
+if (!annotate_agnostic & !feature_type == legacy_feature_type) {
   features <- temp %>%
     mutate(feature = coalesce(target_cds, target_txs)) %>%
     select(id, legacy_feature, feature) %>%
@@ -101,6 +101,14 @@ if (!annotate_agnostic) {
                                           keytype = legacy_feature_type,
                                           column = feature_type)) %>%
     filter(feature == legacy_feature_mapped) %>%
+    distinct(id, feature)
+} else if (!annotate_agnostic & feature_type == legacy_feature_type) {
+  features <- temp %>%
+    mutate(feature = coalesce(target_cds, target_txs)) %>%
+    select(id, legacy_feature, feature) %>%
+    mutate(feature = str_split(feature, pattern = "[|]")) %>%
+    unnest(feature) %>%
+    filter(feature == legacy_feature) %>%
     distinct(id, feature)
 } else {
   features <- temp %>%
