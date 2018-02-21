@@ -30,15 +30,6 @@ legacy_feature_type <- args[6]
 feature_type <- args[7]
 name_lib <- args[8]
 
-# file_lib <- "raw/test1.txt"
-# file_bam <- "results/test1/test1.bam"
-# file_gtf <- "genome/GRCh38/gtf/Homo_sapiens.GRCh38.91.gtf"
-# org_db <- "org.Hs.eg.db"
-# annotate_agnostic <- FALSE
-# legacy_feature_type <- "SYMBOL"
-# feature_type <- "ENSEMBL"
-# name_lib <- "test1"
-
 stopifnot(legacy_feature_type %in% c("ENTREZID", "SYMBOL", "ENSEMBL"))
 stopifnot(feature_type %in% c("ENTREZID", "SYMBOL", "ENSEMBL"))
 stopifnot(org_db %in% c("org.Hs.eg.db", "org.Mm.eg.db"))
