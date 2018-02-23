@@ -38,6 +38,12 @@ stopifnot(org_db %in% c("org.Hs.eg.db", "org.Mm.eg.db"))
 seq <- read_tsv(file_lib) %>%
   rename(legacy_feature = group) %>%
   mutate(legacy_feature = as.character(legacy_feature))
+
+# set agnostic to TRUE if all legacy features are NA
+if (all(is.na(seq$legacy_feature))) {
+  annotate_agnostic <- TRUE
+}
+
 bam <- readGAlignments(file = file_bam, use.names = TRUE)
 txdb <- makeTxDbFromGFF(file = file_gtf)
 
