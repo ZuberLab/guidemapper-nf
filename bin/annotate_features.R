@@ -35,9 +35,8 @@ stopifnot(feature_type %in% c("ENTREZID", "SYMBOL", "ENSEMBL"))
 stopifnot(org_db %in% c("org.Hs.eg.db", "org.Mm.eg.db"))
 
 ### import
-seq <- read_tsv(file_lib) %>%
-  rename(legacy_feature = group) %>%
-  mutate(legacy_feature = as.character(legacy_feature))
+seq <- read_tsv(file_lib, col_types = "ccc") %>%
+  rename(legacy_feature = group)
 
 # set agnostic to TRUE if all legacy features are NA
 if (all(is.na(seq$legacy_feature))) {
