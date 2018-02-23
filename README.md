@@ -1,4 +1,4 @@
-# mageck-nf
+# guidemapper-nf
 Annotate CRISPR and shRNA screening libraries
 
 ## Installation
