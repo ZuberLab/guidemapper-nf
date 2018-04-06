@@ -1,0 +1,3 @@
+library_id	genome
+test_avana	GRCh38
+test_gecko	GRCh38

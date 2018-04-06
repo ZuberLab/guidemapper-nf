@@ -8,25 +8,24 @@ def helpMessage() {
     DESCRIPTION
 
     Usage:
-    nextflow run zuberlab/guidemapper-nf --genome <genome_name>
+    nextflow run zuberlab/guidemapper-nf
 
         <genome_name>       Name of genome to align to. Corresponding GTF file,
                             bowtie2 index, bioconductor organism package, and
-                            type of 'gene_id' in GTF file. Must be specified
+                            bioconductor genome package. Must be specified
                             in config file.
 
     Options:
+        --parameters        Tab-separated file (default: 'parameters.txt')
+                            containing with two columns:
+                            library_id (must match input file) and genome
+                            (must be defined in config in 'genomes')
         --inputDir          Directory containing input files (default: 'input').
                             Input files must contain at least the columns 'id',
                             'group', and 'sequence'.
         --resultsDir        Directory to write output to (default: 'results').
         --genomeDir         Base directory containing genome annotation files
                             referenced in <genome_name>.
-        --agnostic          Annotate guides without using the 'group' columns
-                            in input file (default: false).
-        --legacy_feature    Type of annotation in 'group' column in input files.
-                            Must be one of 'SYMBOL', 'ENSEMBL', or 'ENTREZID'
-                            (default: 'SYMBOL').
         --max_alignments    Maximum number of perfect alignment to report
                             (default: 10). Increasing this number could
                             considerably slow down the alignment process in
@@ -51,57 +50,51 @@ if (params.help){
     exit 0
 }
 
-params.bt2 = params.genome ? params.genomes[ params.genome ].bt2 ?: false : false
-params.gtf = params.genome ? params.genomes[ params.genome ].gtf ?: false : false
-params.org_package = params.genome ? params.genomes[ params.genome ].org_package ?: false : false
-params.gtf_feature = params.genome ? params.genomes[ params.genome ].gtf_feature ?: false : false
-
 log.info ""
 log.info " parameters "
 log.info " ======================"
+log.info " parameter file          : ${params.parameters}"
 log.info " input directory         : ${params.inputDir}"
 log.info " result directory        : ${params.resultsDir}"
 log.info " genome base directory   : ${params.genomeDir}"
-log.info " genome                  : ${params.genome}"
-log.info " GTF file                : ${params.gtf}"
-log.info " Bowtie2 index           : ${params.bt2}"
-log.info " agnostic annotation     : ${params.agnostic}"
-log.info " legacy feature type     : ${params.legacy_feature}"
-log.info " GTF feature type        : ${params.gtf_feature}"
 log.info " max reported alignments : ${params.max_alignments}"
 log.info " ======================"
 log.info ""
 
 Channel
+    .fromPath( params.parameters )
+    .splitCsv(sep: '\t', header: true)
+    .map { it -> tuple(
+        it.library_id, [
+            name : it.library_id,
+            bt2 : params.genomes[ it.genome ].bt2,
+            org_package : params.genomes[ it.genome ].org_package,
+            genome_package : params.genomes[ it.genome ].genome_package,
+            gtf : file(params.genomes[ it.genome ].gtf) ] ) }
+    .set { libraryParameters }
+
+Channel
     .fromPath( "${params.inputDir}/*.txt" )
     .map { file -> tuple( file.baseName, file ) }
-    .into { libInputFiles; libAnnotationFiles }
+    .into { libraryFiles; libraryGrouping }
 
-Channel
-    .fromPath( params.gtf )
-    .ifEmpty { exit 1, "GTF file not found: ${params.gtf}" }
-    .set { gtfFile }
-
-Channel
-    .fromPath( "${params.bt2}*.bt2" )
-    .ifEmpty { exit 1, "Bowtie2 index not found: ${params.bt2}" }
-    .toList()
-    .map { files -> tuple( file(params.bt2).baseName, files) }
-    .set { bt2Index }
+libraryParameters
+    .join( libraryFiles )
+    .set { libraryInputs }
 
 process input2fasta {
 
     tag { name }
 
     input:
-    set val(name), file(library) from libInputFiles
+    set val(name), val(parameters), file(seqs) from libraryInputs
 
     output:
-    set val(name), file("${name}.fa") into libFastaFiles
+    set val(name), val(parameters), file("${name}.fa") into libraryFasta
 
     script:
     """
-    input2fasta.R ${library} ${name}
+    input2fasta.R ${seqs} ${name}
     """
 }
 
@@ -118,18 +111,17 @@ process align {
                    else null}
 
     input:
-    set val(name), file(fasta) from libFastaFiles
-    set val(prefix), file(index) from bt2Index
+    set val(name), val(parameters), file(fasta) from libraryFasta
 
     output:
-    set val(name), file("${name}.bam") into alignedBamFiles
+    set val(name), val(parameters), file("${name}.bam") into libraryAligned
     file "${name}_bt2.log" into alignLogs
 
     script:
     """
     bowtie2 \
         --threads 1 \
-        -x ${prefix} \
+        -x ${parameters.bt2} \
         -f ${fasta} \
         -L 18 \
         --score-min 'C,0,-1' \
@@ -139,10 +131,10 @@ process align {
     """
 }
 
-libAnnotationFiles
-    .concat(alignedBamFiles)
-    .groupTuple()
-    .set{ annotationFiles }
+libraryAligned
+    .join( libraryGrouping )
+    .set{ libraryAnnotation }
+
 
 process annotate_features {
 
@@ -153,8 +145,7 @@ process annotate_features {
                overwrite: 'true'
 
     input:
-    set val(name), file(files) from annotationFiles
-    each file(gtf) from gtfFile
+    set val(name), val(parameters), file(bam), file(seqs) from libraryAnnotation
 
     output:
     set val(name), file("${name}_annotation.txt") into resultsFiles
@@ -162,14 +153,11 @@ process annotate_features {
     script:
     """
     annotate_features.R \
-        ${files[0]} \
-        ${files[1]} \
-        ${gtf} \
-        ${params.org_package} \
-        ${params.agnostic} \
-        ${params.legacy_feature} \
-        ${params.gtf_feature} \
-        ${name}
+        ${seqs} \
+        ${bam} \
+        ${parameters.gtf} \
+        ${parameters.org_package} \
+        ${parameters.genome_package} > ${name}_annotation.txt
     """
 }
 

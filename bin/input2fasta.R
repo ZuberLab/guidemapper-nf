@@ -13,13 +13,6 @@
 ### functions
 `%>%` <- dplyr::`%>%`
 
-# deframe <- function(x) {
-#   value <- x[[2L]]
-#   name <- x[[1L]]
-#   names(value) <- name
-#   value
-# }
-
 ### command line parameters
 args     <- commandArgs(trailingOnly = TRUE)
 file_lib <- args[1]
