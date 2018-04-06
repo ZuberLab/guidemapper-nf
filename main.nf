@@ -123,7 +123,7 @@ process align {
         --threads 1 \
         -x ${parameters.bt2} \
         -f ${fasta} \
-        -L 18 \
+        -L 17 \
         --score-min 'C,0,-1' \
         -k ${params.max_alignments} \
         -S ${name}.sam 2> ${name}_bt2.log
