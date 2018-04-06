@@ -10,11 +10,6 @@ def helpMessage() {
     Usage:
     nextflow run zuberlab/guidemapper-nf
 
-        <genome_name>       Name of genome to align to. Corresponding GTF file,
-                            bowtie2 index, bioconductor organism package, and
-                            bioconductor genome package. Must be specified
-                            in config file.
-
     Options:
         --parameters        Tab-separated file (default: 'parameters.txt')
                             containing with two columns:
