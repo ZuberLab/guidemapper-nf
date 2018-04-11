@@ -158,9 +158,14 @@ generate_guide_id <- function(df) {
     mutate(id = paste(group, sequence, sep = "_"))
 }
 
+add_library_id <- function(df, file_name = file_guides) {
+  df %>%
+    mutate(library_id = stringr::str_replace(basename(file_name), ".txt", ""))
+}
+
 format_output <- function(df) {
   df %>%
-    dplyr::select(id, group, sequence, hgnc_symbol, entrez_id, ensembl_id, 
+    dplyr::select(id, group, sequence, library_id, hgnc_symbol, entrez_id, ensembl_id, 
                   chromosome, strand, start, end, 
                   pm_total, pm_pam, pm_pam_cds, pm_pam_cds_unique, context, 
                   legacy_id, legacy_group, class) %>%
@@ -221,6 +226,7 @@ annotation <- features %>%
   classify_guides %>%
   # clean up
   generate_guide_id %>%
+  add_library_id %>%
   format_output
 
 # export
